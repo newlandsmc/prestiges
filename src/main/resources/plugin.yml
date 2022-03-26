@@ -1,0 +1,13 @@
+name: Prestiges
+version: 1.0
+description: "Prestiges"
+author: "Cookie#8723"
+main: me.cookie.prestiges.Prestiges
+api-version: 1.18
+
+depends:
+  - AureliumSkills
+
+
+commands:
+  prestige:
