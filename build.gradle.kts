@@ -30,6 +30,7 @@ java {
 tasks {
     shadowJar {
         destinationDirectory.set(file("G:\\coding\\Test Servers\\TimeRewards\\plugins"))
+        archiveBaseName.set("Prestiges")
         archiveClassifier.set("")
         relocate("co.aikar.commands", "me.cookie.prestiges.afc")
         relocate("co.aikar.locales", "me.cookie.prestiges.locales")

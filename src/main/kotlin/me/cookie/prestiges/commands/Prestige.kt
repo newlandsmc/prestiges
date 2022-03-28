@@ -9,13 +9,23 @@ import me.cookie.cookiecore.formatMinimessage
 import net.luckperms.api.LuckPerms
 import net.luckperms.api.LuckPermsProvider
 import net.luckperms.api.node.Node
+import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
+import org.bukkit.scheduler.BukkitRunnable
 
-@CommandAlias("prestige")
-class Prestige(private val plugin: JavaPlugin, private val aureliumSkills: AureliumSkills): BaseCommand() {
-
+@CommandAlias("prestige|prestiges")
+class Prestige(private val plugin: JavaPlugin): BaseCommand() {
     private val luckPerms: LuckPerms = LuckPermsProvider.get()
+    private lateinit var aureliumSkills: AureliumSkills
+
+    init {
+        object: BukkitRunnable() {
+            override fun run() {
+                aureliumSkills = AureliumAPI.getPlugin()
+            }
+        }.runTaskLater(plugin, 100)
+    }
 
     @Default
     @Syntax("prestige")
@@ -33,7 +43,7 @@ class Prestige(private val plugin: JavaPlugin, private val aureliumSkills: Aurel
             return
         }
 
-        var boost = totalLevel / 100.0
+        val boost: Float = totalLevel / 100f
 
         sender.sendMessage(totalLevel.toString())
 
@@ -44,30 +54,56 @@ class Prestige(private val plugin: JavaPlugin, private val aureliumSkills: Aurel
         aureliumSkills.leveler.updatePermissions(sender)
         aureliumSkills.leveler.updateStats(sender)
 
-        var currentBoost = 0.0
+        setBoost(sender, boost, true)
 
-        sender.effectivePermissions.forEach {
+    }
+
+    @Subcommand("admin set")
+    @CommandPermission("prestiges.admin")
+    @CommandCompletion("@players @range:0-1000")
+    fun adminSetBoost(
+        sender: Player,
+        target: String,
+        level: Float,
+    ) {
+        val player = Bukkit.getPlayer(target)
+        setBoost(player!!, level, false)
+
+        aureliumSkills.leveler.updatePermissions(sender)
+        aureliumSkills.leveler.updateStats(sender)
+    }
+
+    @Subcommand("admin add")
+    @CommandPermission("prestiges.admin")
+    @CommandCompletion("@players @range:0-1000")
+    fun adminAddBoost(
+        sender: Player,
+        target: String,
+        level: Float,
+    ) {
+        val player = Bukkit.getPlayer(target)
+        setBoost(player!!, level, true)
+
+        aureliumSkills.leveler.updatePermissions(sender)
+        aureliumSkills.leveler.updateStats(sender)
+    }
+
+    private fun setBoost(target: Player, boost: Float, add: Boolean) {
+        var currentBoost = 0.0f
+        target.effectivePermissions.forEach {
             if(it.permission.startsWith("aureliumskills.multiplier.")) {
-                currentBoost = it.permission.split("aureliumskills.multiplier.")[1].toDouble()
-                sender.sendMessage("<red>Current boost: $currentBoost".formatMinimessage())
-                luckPerms.userManager.modifyUser(sender.uniqueId) { user ->
+                if(add) currentBoost = it.permission.split("aureliumskills.multiplier.")[1].toFloat()
+
+                target.sendMessage("<red>Current boost: $currentBoost".formatMinimessage())
+                luckPerms.userManager.modifyUser(target.uniqueId) { user ->
                     user.data().remove(Node.builder(it.permission).build())
                 }
             }
         }
 
-        boost += currentBoost
-
-        luckPerms.userManager.modifyUser(sender.uniqueId) {
-            it.data().add(Node.builder("aureliumskills.multiplier.$boost").build())
-            sender.sendMessage("<green>You have been given a boost of $boost%.".formatMinimessage())
-        }
-    }
-
-    @Subcommand("listperms")
-    fun listPerms(sender: Player) {
-        sender.effectivePermissions.forEach {
-            sender.sendMessage("<yellow>${it.permission}".formatMinimessage())
+        luckPerms.userManager.modifyUser(target.uniqueId) {
+            it.data().add(Node.builder("aureliumskills.multiplier.${boost+currentBoost}").build())
+            target.sendMessage("<green>You have been given a boost of ${boost+currentBoost}%.".formatMinimessage())
         }
     }
 }
